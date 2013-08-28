@@ -22,21 +22,47 @@ text.shadow {
 }
 </style><body>
 <div id="chart"></div>
-<script src="http://d3js.org/d3.v3.min.js"></script>
+<script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
 <script>
 
 var w = 700,
     h = 600;
 var force = d3.layout.force()
-
     .size([w, h])
     .linkDistance(function (link) {
     return link.type.length * 20;
-})
-    .charge(-500)
-    .on("tick", tick);
+    })
+    .charge(-500);
+   // .on("tick", tick);
+    var drag = force.drag()
+        .on("dragstart", function () {
+        d3.event.sourceEvent.stopPropagation();
+    })
+        .on("drag", function () {
+        force.drag();
+    });
+    function mouseover() {
+        d3.select(this).select("circle").transition()
+            .duration(750)
+            .attr("r", 16);
+    }
+
+    function mouseout() {
+        d3.select(this).select("circle").transition()
+            .duration(750)
+            .attr("r", 8);
+    }
+    var updateNode = function () {
+        this.attr("transform", function (d) {
+            return "translate(" + d.x + "," + d.y + ")";
+        });
+    }
+    function redraw() {
+        svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
+    }
 d3.json("network.json", function (error, graph) {
-var links = graph.links;
+    console.log(error, graph, graph.children[0]);
+    var links = graph.children[0].children;
     //sort links by source, then target
     links.sort(function (a, b) {
         if (a.source > b.source) {
@@ -75,7 +101,7 @@ var links = graph.links;
     });
 
     force.nodes(d3.values(nodes))
-        .links(links).start();
+        .links(links).on("tick", tick).start();
 
     var svg = d3.select("#chart").append("svg:svg")
         .attr("width", w)
@@ -89,9 +115,6 @@ var links = graph.links;
         .attr("height", h)
         .attr("fill", "none");
 
-    function redraw() {
-        svg.attr("transform", "translate(" + d3.event.translate + ")" + " scale(" + d3.event.scale + ")");
-    }
     // Per-type markers, as they don't inherit styles.
     /*    svg.append("svg:defs").selectAll("marker")
         .data(["suit", "licensing", "resolved"])
@@ -126,24 +149,6 @@ var links = graph.links;
         return d.type;
     });
 
-    function mouseover() {
-        d3.select(this).select("circle").transition()
-            .duration(750)
-            .attr("r", 16);
-    }
-
-    function mouseout() {
-        d3.select(this).select("circle").transition()
-            .duration(750)
-            .attr("r", 8);
-    }
-    var drag = force.drag()
-        .on("dragstart", function () {
-        d3.event.sourceEvent.stopPropagation();
-    })
-        .on("drag", function () {
-        force.drag();
-    });
     var circle = svg.append("svg:g").selectAll("circle")
         .data(force.nodes())
         .enter().append("g")
@@ -171,11 +176,7 @@ var links = graph.links;
         .text(function (d) {
         return d.name;
     });
-    var updateNode = function () {
-        this.attr("transform", function (d) {
-            return "translate(" + d.x + "," + d.y + ")";
-        });
-    }
+    
     // Use elliptical arc path segments to doubly-encode directionality.
         function tick() {
             path.attr("d", function (d) {
